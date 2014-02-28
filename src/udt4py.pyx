@@ -407,6 +407,7 @@ class UDTSocket(object):
     that can accommodate various congestion control algorithms.
     """
 
+    @staticmethod
     def _udt_check(int ret):
         """
         Internal method. Do not use it.
@@ -1345,6 +1346,8 @@ class UDTEpoll(object):
     sockets. The number system descriptors supported by UDT::epoll are platform
     dependent.
     """
+
+    @staticmethod
     def _epoll_check(int ret):
         """
         Internal method. Do not use it.

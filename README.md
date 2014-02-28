@@ -3,8 +3,8 @@ udt4py
 
 libudt4 Python wrapper written with Cython.
 
-Tested with Python3 under Linux. In buffer operations bytes, bytearray and
-memoryview objects are supported, allowing zero-copy operations.
+Tested with Python 2.7 and Python 3.3 on Linux. In buffer operations bytes,
+bytearray and memoryview objects are supported, allowing zero-copy operations.
 
 In order to build the native module, execute:
 
