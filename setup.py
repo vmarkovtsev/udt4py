@@ -51,7 +51,6 @@ setup(
     author_email="v.markovtsev@samsung.com",
     url="https://github.com/vmarkovtsev/udt4py",
     download_url='https://github.com/vmarkovtsev/udt4py',
-    bugtrack_url="https://github.com/vmarkovtsev/udt4py/issues",
     ext_modules=cythonize([Extension(
         "udt4py",
         ["src/udt4py.pyx"],
