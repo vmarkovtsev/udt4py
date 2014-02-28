@@ -1,3 +1,4 @@
+"""
 Copyright (c) 2014, Samsung Electronics Co.,Ltd.
 All rights reserved.
 
@@ -24,3 +25,51 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The views and conclusions contained in the software and documentation are those
 of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of Samsung Electronics Co.,Ltd..
+"""
+
+"""
+udt4py - libudt4 Cython-ish wrapper.
+URL:                    https://github.com/vmarkovtsev/udt4py
+Original author:        Vadim Markovtsev <v.markovtsev@samsung.com>
+
+libudt4 is (c)2001 - 2011, The Board of Trustees of the University of Illinois.
+libudt4 URL:            http://udt.sourceforge.net/
+"""
+
+"""
+UDTEpoll tests.
+"""
+
+
+import threading
+import time
+import unittest
+from udt4py import UDTSocket, UDTException, UDTEpoll
+
+
+class UDTEpollTest(unittest.TestCase):
+    def testEpoll(self):
+        self.socket = UDTSocket()
+        self.socket.bind("0.0.0.0:7015")
+        self.socket.listen()
+        other_thread = threading.Thread(target=self.otherConnect)
+        other_thread.start()
+        sock = self.socket.accept()
+        poll = UDTEpoll()
+        poll.add(sock)
+        rs = []
+        while len(rs) == 0:
+            rs, ws, _, _ = poll.wait()
+        self.assertEqual(sock, rs[0])
+        self.assertEqual(sock, ws[0])
+        msg = bytearray(5)
+        sock.recv(msg)
+
+    def otherConnect(self):
+        sock = UDTSocket()
+        sock.connect("127.0.0.1:7015")
+        self.assertEqual(UDTSocket.Status.CONNECTED, sock.status)
+        sock.send(b"hello")
+
+if __name__ == "__main__":
+    unittest.main()
