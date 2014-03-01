@@ -99,6 +99,11 @@ cdef extern from "udt/udt.h":
         _CLOSED "CLOSED"
         _NONEXIST "NONEXIST"
 
+    enum EPOLLOpt:
+        _UDT_EPOLL_IN "UDT_EPOLL_IN"
+        _UDT_EPOLL_OUT "UDT_EPOLL_OUT"
+        _UDT_EPOLL_ERR "UDT_EPOLL_ERR"
+
     enum UDTOpt:
         UDT_MSS
         UDT_SNDSYN
@@ -1356,9 +1361,9 @@ class UDTEpoll(object):
             raise UDTException()
         return ret
 
-    UDT_EPOLL_IN = 0x1
-    UDT_EPOLL_OUT = 0x4
-    UDT_EPOLL_ERR = 0x8
+    UDT_EPOLL_IN = _UDT_EPOLL_IN
+    UDT_EPOLL_OUT =  _UDT_EPOLL_OUT
+    UDT_EPOLL_ERR = _UDT_EPOLL_ERR
 
     def __init__(self):
         """
