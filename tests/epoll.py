@@ -54,7 +54,7 @@ class UDTEpollTest(unittest.TestCase):
         self.socket.listen()
         other_thread = threading.Thread(target=self.otherConnect)
         other_thread.start()
-        sock = self.socket.accept()
+        sock, _ = self.socket.accept()
         poll = UDTEpoll()
         poll.add(sock)
         rs = []

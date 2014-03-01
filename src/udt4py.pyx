@@ -730,7 +730,7 @@ class UDTSocket(object):
         rsock.socket = result
         rsock._family = self._family
         rsock._type = self._type
-        return rsock
+        return (rsock, self._sockaddr_in_to_str(addrv4))
 
     @_udtapi
     def connect(self, addr):

@@ -72,7 +72,7 @@ class UDTSocketTest(unittest.TestCase):
         self.assertEqual(UDTSocket.Status.LISTENING, self.socket.status)
         other_thread = threading.Thread(target=self.otherConnect)
         other_thread.start()
-        sock = self.socket.accept()
+        sock, _ = self.socket.accept()
         self.assertEqual(UDTSocket.Status.CONNECTED, sock.status)
         self.assertFalse(sock.family_v6)
         self.assertFalse(sock.mode_DGRAM)
@@ -111,7 +111,7 @@ class UDTSocketTest(unittest.TestCase):
         sock = None
         while sock is None:
             try:
-                sock = self.socket.accept()
+                sock, _ = self.socket.accept()
             except UDTException as e:
                 self.assertEqual(UDTException.EASYNCRCV, e.error_code)
         msg = bytearray(5)
