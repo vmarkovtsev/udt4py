@@ -428,7 +428,9 @@ class UDTSocket(object):
         """
         @wraps(fn)
         def wrapped(*args, **kwargs):
-            return UDTSocket._udt_check(fn(*args, **kwargs))
+            ret = fn(*args, **kwargs)
+            if ret is not None:
+                return UDTSocket._udt_check(ret)
         return wrapped
 
     class Status(int):
