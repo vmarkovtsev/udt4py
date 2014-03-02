@@ -41,6 +41,7 @@ UDTSocket tests.
 """
 
 
+import socket
 import threading
 import time
 import unittest
@@ -50,8 +51,8 @@ from udt4py import UDTSocket, UDTException
 class UDTSocketTest(unittest.TestCase):
     def testOptions(self):
         self.socket = UDTSocket()
-        self.assertFalse(self.socket.family_v6)
-        self.assertFalse(self.socket.mode_DGRAM)
+        self.assertEqual(socket.AF_INET, self.socket.family)
+        self.assertEqual(socket.SOCK_STREAM, self.socket.type)
         self.assertTrue(self.socket.UDT_SNDSYN)
         self.assertTrue(self.socket.UDT_RCVSYN)
         self.assertEqual(65536, self.socket.UDP_SNDBUF)
@@ -67,17 +68,17 @@ class UDTSocketTest(unittest.TestCase):
         self.assertEqual(UDTSocket.Status.INIT, self.socket.status)
         self.socket.bind("0.0.0.0:7013")
         self.assertEqual(UDTSocket.Status.OPENED, self.socket.status)
-        self.assertEqual("0.0.0.0:7013", self.socket.address)
+        self.assertEqual(("0.0.0.0", 7013), self.socket.address)
         self.socket.listen()
         self.assertEqual(UDTSocket.Status.LISTENING, self.socket.status)
         other_thread = threading.Thread(target=self.otherConnect)
         other_thread.start()
         sock, _ = self.socket.accept()
         self.assertEqual(UDTSocket.Status.CONNECTED, sock.status)
-        self.assertFalse(sock.family_v6)
-        self.assertFalse(sock.mode_DGRAM)
-        self.assertEqual("127.0.0.1:7013", sock.address)
-        self.assertEqual("127.0.0.1", sock.peer_address[0:9])
+        self.assertEqual(socket.AF_INET, sock.family)
+        self.assertEqual(socket.SOCK_STREAM, sock.type)
+        self.assertEqual(("127.0.0.1", 7013), sock.address)
+        self.assertEqual("127.0.0.1", sock.peer_address[0][0:9])
         msg = bytearray(5)
         sock.recv(msg)
         self.assertEqual(b"hello", msg)
@@ -102,11 +103,11 @@ class UDTSocketTest(unittest.TestCase):
         other_thread = threading.Thread(target=self.otherConnectNoBlock)
         other_thread.start()
         time.sleep(0.1)
-        self.socket = UDTSocket(DGRAM=True)
-        self.assertTrue(self.socket.mode_DGRAM)
+        self.socket = UDTSocket(type=socket.SOCK_DGRAM)
+        self.assertEqual(socket.SOCK_DGRAM, self.socket.type)
         self.socket.UDT_RCVSYN = False
         self.assertFalse(self.socket.UDT_RCVSYN)
-        self.socket.bind("0.0.0.0:7014")
+        self.socket.bind(("0.0.0.0", 7014))
         self.socket.listen()
         sock = None
         while sock is None:
@@ -125,7 +126,7 @@ class UDTSocketTest(unittest.TestCase):
         other_thread.join()
 
     def otherConnectNoBlock(self):
-        sock = UDTSocket(DGRAM=True)
+        sock = UDTSocket(type=socket.SOCK_DGRAM)
         sock.UDT_SNDSYN = False
         self.assertFalse(sock.UDT_SNDSYN)
         while sock.status != UDTSocket.Status.CONNECTED:

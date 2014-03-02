@@ -513,16 +513,16 @@ class UDTSocket(object):
             self.byteAvailSndBuf = ti.byteAvailSndBuf
             self.byteAvailRcvBuf = ti.byteAvailRcvBuf
 
-    def __init__(self, DGRAM=False, v6=False):
+    def __init__(self, int family=AF_INET, int type=SOCK_STREAM):
         """
         Creates a new UDT socket.
 
         Parameters:
-            DGRAM       If False (default), socket's type will be SOCK_STREAM;
-                        otherwise, SOCK_DGRAM.
+            family      The address family. It must be either AF_INET (the
+                        default) or AF_INET6.
 
-            v6          If False (default), socket's IP family will be
-                        AF_INET (IPv4); otherwise, AF_INET6 (IPv6).
+            type        The socket type. It must be either SOCK_STREAM (the
+                        default) or SOCK_DGRAM.
 
         Description:
             Creates a new UDT socket. The is no limits for the number of UDT
@@ -534,32 +534,47 @@ class UDTSocket(object):
             cases.
         """
         super(UDTSocket, self).__init__()
-        if v6:
+        self.socket = None
+        if family != AF_INET and family != AF_INET6:
+            raise ValueError("Unsupported address family.")
+        if family == AF_INET6:
             warnings.warn("IPv6 sockets are currently  not supported by this "
                           "wrapper")
-        self.socket = None
-        cdef int af = AF_INET6 if v6 else AF_INET
-        self._family = af
-        cdef int type = SOCK_DGRAM if DGRAM else SOCK_STREAM
+        self._family = family
+        if type != SOCK_STREAM and type != SOCK_DGRAM:
+            raise ValueError("Unsupported socket type.")
         self._type = type
         cdef UDTSOCKET mysocket = INVALID_SOCK
         with nogil:
-            mysocket = socket(af, type, 0)  # ignored
+            mysocket = socket(family, type, 0)  # ignored
         if mysocket == INVALID_SOCK:
             raise UDTException()
         self.socket = mysocket
 
     def __del__(self):
         try:
-            self.__exit__()
-        except:
+            self.close()
+        except UDTException:
             pass
 
     def __enter__(self):
         return self
 
-    @_udtapi
     def __exit__(self, type=None, value=None, traceback=None):
+        self.close()
+
+    @_udtapi
+    def close(self):
+        """
+        Mark the socket closed. The underlying system resources are closed.
+        Once that happens, all future operations on the socket object will
+        fail. The remote end will receive no more data (after queued data is
+        flushed).
+
+        Sockets are automatically closed when they are garbage-collected, but
+        it is recommended to close() them explicitly, or to use a with
+        statement around them.
+        """
         if self.socket is None:
             return
         cdef UDTSOCKET mysocket = self.socket
@@ -589,6 +604,20 @@ class UDTSocket(object):
             raise ValueError("Could not parse IPv4 address \"%s\"" % str_host)
         return addrv4
 
+    def _tuple_to_sockaddr_in(self, addr):
+        """
+        Internal method. Do not use it directly.
+        """
+        str_host, port = addr
+        host = str_host.encode()
+        cdef sockaddr_in addrv4
+        memset(&addrv4, 0, sizeof(sockaddr_in))
+        addrv4.sin_family = self._family
+        addrv4.sin_port = htons(port)
+        if inet_aton(host, &addrv4.sin_addr) == 0:
+            raise ValueError("Could not parse IPv4 address \"%s\"" % host)
+        return addrv4
+
     def _sockaddr_in_to_str(self, sockaddr_in addr):
         """
         Internal method. Do not use it directly.
@@ -597,13 +626,22 @@ class UDTSocket(object):
         cdef const char *host = inet_ntoa(addr.sin_addr)
         return "%s:%d" % (host.decode(), port)
 
-    def _bind_address(self, str addr):
+    def _sockaddr_in_to_tuple(self, sockaddr_in addr):
+        """
+        Internal method. Do not use it directly.
+        """
+        cdef int port = ntohs(addr.sin_port)
+        cdef const char *host = inet_ntoa(addr.sin_addr)
+        return (host.decode(), port)
+
+    def _bind_address(self, addr):
         """
         Internal method. Do not use it directly.
         """
         cdef int result = ERROR
         cdef UDTSOCKET mysocket = self.socket
-        cdef sockaddr_in addrv4 = self._str_to_sockaddr_in(addr)
+        cdef sockaddr_in addrv4 = self._str_to_sockaddr_in(addr) \
+            if isinstance(addr, str) else self._tuple_to_sockaddr_in(addr)
         with nogil:
             result = bind(mysocket, <sockaddr *>&addrv4, sizeof(sockaddr))
         return result
@@ -625,9 +663,10 @@ class UDTSocket(object):
         Binds a UDT socket to a known or an available local address.
 
         Parameters:
-            address_or_udp_socket   ipaddr:port string to assign or an existing
-                                    UDP socket for UDT to use. For example,
-                                    '0.0.0.0:7777' or '192.168.0.1:0'.
+            address_or_udp_socket   ipaddr:port string or tuple to assign or
+                                    an existing UDP socket for UDT to use. For
+                                    example, '0.0.0.0:7777' or
+                                    ('192.168.0.1', 0).
 
         Description:
             The bind method is usually to assign a UDT socket a local address,
@@ -666,13 +705,14 @@ class UDTSocket(object):
             passed as the port number, bind always creates a new port,
             no matter what value the UDT_REUSEADDR sets.
         """
-        if isinstance(address_or_udp_socket, str):
+        if isinstance(address_or_udp_socket, str) or \
+           isinstance(address_or_udp_socket, tuple):
             return self._bind_address(address_or_udp_socket)
         elif isinstance(address_or_udp_socket, int):
             return self._bind_socket(address_or_udp_socket)
         else:
-            raise ValueError("address_or_udp_socket must be either a string "
-                             "or an integer")
+            raise ValueError("address_or_udp_socket must be either a string, "
+                             "a tuple (str, int) or an integer")
 
     @_udtapi
     def listen(self, int backlog=128):
@@ -702,13 +742,15 @@ class UDTSocket(object):
 
     def accept(self):
         """
-        Retrieves an incoming connection. Returns an instance of UDTSocket.
+        Retrieves an incoming connection. Returns a tuple
+        (instance of UDTSocket, it's address).
 
         Description:
             Once a UDT socket is in listening state, it accepts new connections
             and maintains the pending connections in a queue. An accept call
             retrieves the first connection in the queue, removes it from the
-            queue, and returns the associate socket descriptor.
+            queue, and returns the associated socket descriptor together with
+            the incoming socket address.
 
             If there is no connections in the queue when accept is called, a
             blocking socket will wait until a new connection is set up, whereas
@@ -730,7 +772,7 @@ class UDTSocket(object):
         rsock.socket = result
         rsock._family = self._family
         rsock._type = self._type
-        return (rsock, self._sockaddr_in_to_str(addrv4))
+        return (rsock, self._sockaddr_in_to_tuple(addrv4))
 
     @_udtapi
     def connect(self, addr):
@@ -739,7 +781,8 @@ class UDTSocket(object):
         rendezvous mode) to set up a UDT connection.
 
         Parameters:
-            addr        ipaddr:port string. For example, '192.168.0.1:7777'.
+            addr        ipaddr:port string or tuple. For example,
+                        '192.168.0.1:7777' or ('127.0.0.1', 8000).
 
         Description:
             UDT is connection oriented, for both of its SOCK_STREAM and
@@ -770,7 +813,11 @@ class UDTSocket(object):
         """
         cdef int result = ERROR
         cdef UDTSOCKET mysocket = self.socket
-        cdef sockaddr_in addrv4 = self._str_to_sockaddr_in(addr)
+        if not isinstance(addr, str) and not isinstance(addr, tuple):
+            raise ValueError('addr must be either a string or a (str, int) '
+                             'tuple')
+        cdef sockaddr_in addrv4 = self._str_to_sockaddr_in(addr) \
+            if isinstance(addr, str) else self._tuple_to_sockaddr_in(addr)
         with nogil:
             result = connect(mysocket, <sockaddr*>&addrv4, sizeof(sockaddr))
         return result
@@ -973,8 +1020,8 @@ class UDTSocket(object):
     def peer_address(self):
         """
         Retrieves the address information of the peer side of a connected UDT
-        socket. Returns a string 'ipaddr:port', for example,
-        '192.168.0.1:7777'.
+        socket. Returns a tuple ('ipaddr', port), for example,
+        ('192.168.0.1', 7777).
 
         Description:
             The getpeername retrieves the address of the peer side associated
@@ -986,13 +1033,13 @@ class UDTSocket(object):
         cdef int addrlen = sizeof(sockaddr_in)
         UDTSocket._udt_check(getpeername(self.socket, <sockaddr *>&addrv4,
                                          &addrlen))
-        return self._sockaddr_in_to_str(addrv4)
+        return self._sockaddr_in_to_tuple(addrv4)
 
     @property
     def address(self):
         """
         Retrieves the local address associated with a UDT socket. Returns
-        a string 'ipaddr:port', for example, '192.168.0.1:7777'.
+        a tuple ('ipaddr', port), for example, ('192.168.0.1', 7777).
 
         Description:
             The getsockname retrieves the local address associated with the
@@ -1027,22 +1074,21 @@ class UDTSocket(object):
         cdef int addrlen = sizeof(sockaddr_in)
         UDTSocket._udt_check(udt_getsockname(self.socket, <sockaddr *>&addrv4,
                                              &addrlen))
-        return self._sockaddr_in_to_str(addrv4)
+        return self._sockaddr_in_to_tuple(addrv4)
 
     @property
-    def family_v6(self):
+    def family(self):
         """
-        True if socket's family is AF_INET6 (IPv6); otherwise (AF_INET, IPv4),
-        False.
+        Socket's address family (AF_INET or AF_INET6).
         """
-        return self._family == AF_INET6
+        return self._family
 
     @property
-    def mode_DGRAM(self):
+    def type(self):
         """
-        True if socket's mode is SOCK_DGRAM; otherwise (SOCK_STREAM), False.
+        Socket's type (SOCK_STREAM or SOCK_DGRAM).
         """
-        return self._type == SOCK_DGRAM
+        return self._type
 
     @property
     def status(self):
@@ -1362,7 +1408,7 @@ class UDTEpoll(object):
         return ret
 
     UDT_EPOLL_IN = _UDT_EPOLL_IN
-    UDT_EPOLL_OUT =  _UDT_EPOLL_OUT
+    UDT_EPOLL_OUT = _UDT_EPOLL_OUT
     UDT_EPOLL_ERR = _UDT_EPOLL_ERR
 
     def __init__(self):
