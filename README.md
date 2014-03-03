@@ -16,7 +16,7 @@ In Ubuntu, you will need ``cython3`` package.
 To run the tests, execute:
 
 ```bash
-PYTHONPATH=`pwd` nosetests3 -w tests --tests socket,epoll
+PYTHONPATH=`pwd` nosetests3 -w tests --tests udt_socket,udt_epoll
 ```
 
 Example usage:
