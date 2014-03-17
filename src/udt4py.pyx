@@ -287,7 +287,7 @@ def shutdown():
 atexit.register(shutdown)
 
 
-cdef char *PythonBufferToBytes(buf):
+cdef char *python_buffer_to_bytes(buf):
     if isinstance(buf, bytes):
         return buf
     if isinstance(buf, bytearray):
@@ -400,6 +400,41 @@ class UDTException(Exception):
     @property
     def message(self):
         return self._message
+
+
+cdef sockaddr_in str_to_sockaddr_in(str addr, unsigned short int family):
+    str_host, str_port = \
+        [part.strip() for part in addr.encode().split(b':')]
+    cdef sockaddr_in addrv4
+    memset(&addrv4, 0, sizeof(sockaddr_in))
+    addrv4.sin_family = family
+    addrv4.sin_port = htons(int(str_port))
+    if inet_aton(str_host, &addrv4.sin_addr) == 0:
+        raise ValueError("Could not parse IPv4 address \"%s\"" % str_host)
+    return addrv4
+
+cdef sockaddr_in tuple_to_sockaddr_in(addr, unsigned short int family):
+    str_host, port = addr
+    host = str_host.encode()
+    cdef sockaddr_in addrv4
+    memset(&addrv4, 0, sizeof(sockaddr_in))
+    addrv4.sin_family = family
+    addrv4.sin_port = htons(port)
+    if inet_aton(host, &addrv4.sin_addr) == 0:
+        raise ValueError("Could not parse IPv4 address \"%s\"" % host)
+    return addrv4
+
+"""
+cdef sockaddr_in_to_str(sockaddr_in addr):
+    cdef uint16_t port = ntohs(addr.sin_port)
+    cdef const char *host = inet_ntoa(addr.sin_addr)
+    return "%s:%d" % (host.decode(), port)
+"""
+
+cdef sockaddr_in_to_tuple(sockaddr_in addr):
+    cdef int port = ntohs(addr.sin_port)
+    cdef const char *host = inet_ntoa(addr.sin_addr)
+    return (host.decode(), port)
 
 
 class UDTSocket(object):
@@ -592,58 +627,15 @@ class UDTSocket(object):
                 self.status < UDTSocket.Status.CLOSED
              else "<none>")
 
-    def _str_to_sockaddr_in(self, str addr):
-        """
-        Internal method. Do not use it directly.
-        """
-        str_host, str_port = \
-            [part.strip() for part in addr.encode().split(b':')]
-        cdef sockaddr_in addrv4
-        memset(&addrv4, 0, sizeof(sockaddr_in))
-        addrv4.sin_family = self._family
-        addrv4.sin_port = htons(int(str_port))
-        if inet_aton(str_host, &addrv4.sin_addr) == 0:
-            raise ValueError("Could not parse IPv4 address \"%s\"" % str_host)
-        return addrv4
-
-    def _tuple_to_sockaddr_in(self, addr):
-        """
-        Internal method. Do not use it directly.
-        """
-        str_host, port = addr
-        host = str_host.encode()
-        cdef sockaddr_in addrv4
-        memset(&addrv4, 0, sizeof(sockaddr_in))
-        addrv4.sin_family = self._family
-        addrv4.sin_port = htons(port)
-        if inet_aton(host, &addrv4.sin_addr) == 0:
-            raise ValueError("Could not parse IPv4 address \"%s\"" % host)
-        return addrv4
-
-    def _sockaddr_in_to_str(self, sockaddr_in addr):
-        """
-        Internal method. Do not use it directly.
-        """
-        cdef uint16_t port = ntohs(addr.sin_port)
-        cdef const char *host = inet_ntoa(addr.sin_addr)
-        return "%s:%d" % (host.decode(), port)
-
-    def _sockaddr_in_to_tuple(self, sockaddr_in addr):
-        """
-        Internal method. Do not use it directly.
-        """
-        cdef int port = ntohs(addr.sin_port)
-        cdef const char *host = inet_ntoa(addr.sin_addr)
-        return (host.decode(), port)
-
     def _bind_address(self, addr):
         """
         Internal method. Do not use it directly.
         """
         cdef int result = ERROR
         cdef UDTSOCKET mysocket = self.socket
-        cdef sockaddr_in addrv4 = self._str_to_sockaddr_in(addr) \
-            if isinstance(addr, str) else self._tuple_to_sockaddr_in(addr)
+        cdef sockaddr_in addrv4 = str_to_sockaddr_in(addr, self._family) \
+            if isinstance(addr, str) \
+            else tuple_to_sockaddr_in(addr, self._family)
         with nogil:
             result = bind(mysocket, <sockaddr *>&addrv4, sizeof(sockaddr))
         return result
@@ -774,7 +766,7 @@ class UDTSocket(object):
         rsock.socket = result
         rsock._family = self._family
         rsock._type = self._type
-        return (rsock, self._sockaddr_in_to_tuple(addrv4))
+        return (rsock, sockaddr_in_to_tuple(addrv4))
 
     @_udtapi
     def connect(self, addr):
@@ -818,8 +810,9 @@ class UDTSocket(object):
         if not isinstance(addr, str) and not isinstance(addr, tuple):
             raise ValueError('addr must be either a string or a (str, int) '
                              'tuple')
-        cdef sockaddr_in addrv4 = self._str_to_sockaddr_in(addr) \
-            if isinstance(addr, str) else self._tuple_to_sockaddr_in(addr)
+        cdef sockaddr_in addrv4 = str_to_sockaddr_in(addr, self._family) \
+            if isinstance(addr, str) \
+            else tuple_to_sockaddr_in(addr, self._family)
         with nogil:
             result = connect(mysocket, <sockaddr*>&addrv4, sizeof(sockaddr))
         return result
@@ -854,7 +847,7 @@ class UDTSocket(object):
             socket.
         """
         cdef UDTSOCKET mysocket = self.socket
-        cdef const char *cbuf = PythonBufferToBytes(buf)
+        cdef const char *cbuf = python_buffer_to_bytes(buf)
         cdef int length = len(buf)
         with nogil:
             result = send(mysocket, cbuf, length, 0)
@@ -889,7 +882,7 @@ class UDTSocket(object):
             be returned. UDT_RCVTIMEO has no effect for non-blocking socket.
         """
         cdef UDTSOCKET mysocket = self.socket
-        cdef char *cbuf = PythonBufferToBytes(buf)
+        cdef char *cbuf = python_buffer_to_bytes(buf)
         cdef int length = len(buf)
         with nogil:
             result = recv(mysocket, cbuf, length, 0)
@@ -949,7 +942,7 @@ class UDTSocket(object):
             the receiver buffer may be read and the rest will be discarded.
         """
         cdef UDTSOCKET mysocket = self.socket
-        cdef char *cbuf = PythonBufferToBytes(buf)
+        cdef char *cbuf = python_buffer_to_bytes(buf)
         cdef int length = len(buf)
         with nogil:
             result = sendmsg(mysocket, cbuf, length, ttl, inorder)
@@ -988,7 +981,7 @@ class UDTSocket(object):
             socket.
         """
         cdef UDTSOCKET mysocket = self.socket
-        cdef char *cbuf = PythonBufferToBytes(buf)
+        cdef char *cbuf = python_buffer_to_bytes(buf)
         cdef int length = len(buf)
         with nogil:
             result = recvmsg(mysocket, cbuf, length)
@@ -1035,7 +1028,7 @@ class UDTSocket(object):
         cdef int addrlen = sizeof(sockaddr_in)
         UDTSocket._udt_check(getpeername(self.socket, <sockaddr *>&addrv4,
                                          &addrlen))
-        return self._sockaddr_in_to_tuple(addrv4)
+        return sockaddr_in_to_tuple(addrv4)
 
     @property
     def address(self):
@@ -1076,7 +1069,7 @@ class UDTSocket(object):
         cdef int addrlen = sizeof(sockaddr_in)
         UDTSocket._udt_check(udt_getsockname(self.socket, <sockaddr *>&addrv4,
                                              &addrlen))
-        return self._sockaddr_in_to_tuple(addrv4)
+        return sockaddr_in_to_tuple(addrv4)
 
     @property
     def family(self):
