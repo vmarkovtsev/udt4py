@@ -214,9 +214,9 @@ cdef extern from "udt/udt.h" namespace "CUDTException":
 
 
 cdef extern from "udt/udt.h" namespace "UDT":
-    ctypedef CUDTException _ERRORINFO "UDT::ERRORINFO"
+    ctypedef CUDTException ERRORINFO
     ctypedef UDTOpt SOCKOPT
-    ctypedef CPerfMon _TRACEINFO "UDT::TRACEINFO"
+    ctypedef CPerfMon TRACEINFO
 
     const UDTSOCKET INVALID_SOCK
     const int ERROR
@@ -255,10 +255,10 @@ cdef extern from "udt/udt.h" namespace "UDT":
                    int64_t msTimeOut, set[SYSSOCKET]* lrfds,
                    set[SYSSOCKET]* wrfds) nogil
     int epoll_release(int eid) nogil
-    _ERRORINFO& getlasterror() nogil
+    ERRORINFO& getlasterror() nogil
     int getlasterror_code()
     const char* getlasterror_desc()
-    int perfmon(UDTSOCKET u, _TRACEINFO* perf, bool clear) nogil
+    int perfmon(UDTSOCKET u, TRACEINFO* perf, bool clear) nogil
     _UDTSTATUS getsockstate(UDTSOCKET u) nogil
 
 
@@ -511,7 +511,7 @@ class UDTSocket(object):
         UDT::TRACEINFO struct.
         """
 
-        def __init__(self, _TRACEINFO ti):
+        def __init__(self, TRACEINFO ti):
             super(UDTSocket.TraceInfo, self).__init__()
             # global measurements
             self.msTimeStamp = ti.msTimeStamp
@@ -1007,7 +1007,7 @@ class UDTSocket(object):
             the periodical counts since last time the counts are cleared, and
             instant parameter values.
         """
-        cdef _TRACEINFO trinf
+        cdef TRACEINFO trinf
         UDTSocket._udt_check(perfmon(self.socket, &trinf, clear))
         return UDTSocket.TraceInfo(trinf)
 
