@@ -88,7 +88,7 @@ cdef extern from "udt/udt.h":
     ctypedef SYSSOCKET UDPSOCKET
     ctypedef int UDTSOCKET
 
-    enum _UDTSTATUS "UDTSTATUS":
+    enum UDTSTATUS:
         _INIT "INIT"
         _OPENED "OPENED"
         _LISTENING "LISTENING"
@@ -259,7 +259,7 @@ cdef extern from "udt/udt.h" namespace "UDT":
     int getlasterror_code()
     const char* getlasterror_desc()
     int perfmon(UDTSOCKET u, TRACEINFO* perf, bool clear) nogil
-    _UDTSTATUS getsockstate(UDTSOCKET u) nogil
+    UDTSTATUS getsockstate(UDTSOCKET u) nogil
 
 
 """
@@ -1091,7 +1091,7 @@ class UDTSocket(object):
         Retrieves the current state of the socket. Returns an instance of
         UDTSocket.Status.
         """
-        cdef _UDTSTATUS status = getsockstate(self.socket)
+        cdef UDTSTATUS status = getsockstate(self.socket)
         return UDTSocket.Status(status)
 
     def _getsockopt(self, UDTOpt optname):
