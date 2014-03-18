@@ -213,7 +213,7 @@ cdef extern from "udt/udt.h" namespace "CUDTException":
     const int _EUNKNOWN "CUDTException::EUNKNOWN"
 
 
-cdef extern from "udt/udt.h" namespace "UDT":
+cdef extern from "udt/udt.h" namespace "UDT" nogil:
     ctypedef CUDTException ERRORINFO
     ctypedef UDTOpt SOCKOPT
     ctypedef CPerfMon TRACEINFO
@@ -221,45 +221,45 @@ cdef extern from "udt/udt.h" namespace "UDT":
     const UDTSOCKET INVALID_SOCK
     const int ERROR
 
-    int startup() nogil
-    int cleanup() nogil
-    UDTSOCKET socket(int af, int type, int protocol) nogil
-    int bind(UDTSOCKET u, const sockaddr* name, int namelen) nogil
-    int bind2(UDTSOCKET u, UDPSOCKET udpsock) nogil
-    int listen(UDTSOCKET u, int backlog) nogil
-    UDTSOCKET accept(UDTSOCKET u, sockaddr* addr, int* addrlen) nogil
-    int connect(UDTSOCKET u, const sockaddr* name, int namelen) nogil
-    int close(UDTSOCKET u) nogil
-    int getpeername(UDTSOCKET u, sockaddr* name, int* namelen) nogil
+    int startup()
+    int cleanup()
+    UDTSOCKET socket(int af, int type, int protocol)
+    int bind(UDTSOCKET u, const sockaddr* name, int namelen)
+    int bind2(UDTSOCKET u, UDPSOCKET udpsock)
+    int listen(UDTSOCKET u, int backlog)
+    UDTSOCKET accept(UDTSOCKET u, sockaddr* addr, int* addrlen)
+    int connect(UDTSOCKET u, const sockaddr* name, int namelen)
+    int close(UDTSOCKET u)
+    int getpeername(UDTSOCKET u, sockaddr* name, int* namelen)
     int udt_getsockname "UDT::getsockname" (UDTSOCKET u, sockaddr* name,
-                                            int* namelen) nogil
+                                            int* namelen)
     int getsockopt(UDTSOCKET u, int level, SOCKOPT optname, void* optval,
-                   int* optlen) nogil
+                   int* optlen)
     int setsockopt(UDTSOCKET u, int level, SOCKOPT optname, const void* optval,
-                   int optlen) nogil
-    int send(UDTSOCKET u, const char* buf, int len, int flags) nogil
-    int recv(UDTSOCKET u, char* buf, int len, int flags) nogil
+                   int optlen)
+    int send(UDTSOCKET u, const char* buf, int len, int flags)
+    int recv(UDTSOCKET u, char* buf, int len, int flags)
     int sendmsg(UDTSOCKET u, const char* buf, int len, int ttl,
-                bool inorder) nogil
-    int recvmsg(UDTSOCKET u, char* buf, int len) nogil
+                bool inorder)
+    int recvmsg(UDTSOCKET u, char* buf, int len)
     int64_t sendfile2(UDTSOCKET u, const char* path, int64_t* offset,
-                      int64_t size, int block=364000) nogil
+                      int64_t size, int block=364000)
     int64_t recvfile2(UDTSOCKET u, const char* path, int64_t* offset,
-                      int64_t size, int block=7280000) nogil
-    int epoll_create() nogil
-    int epoll_add_usock(int eid, UDTSOCKET u, const int* events) nogil
-    int epoll_add_ssock(int eid, SYSSOCKET s, const int* events) nogil
-    int epoll_remove_usock(int eid, UDTSOCKET u) nogil
-    int epoll_remove_ssock(int eid, SYSSOCKET s) nogil
+                      int64_t size, int block=7280000)
+    int epoll_create()
+    int epoll_add_usock(int eid, UDTSOCKET u, const int* events)
+    int epoll_add_ssock(int eid, SYSSOCKET s, const int* events)
+    int epoll_remove_usock(int eid, UDTSOCKET u)
+    int epoll_remove_ssock(int eid, SYSSOCKET s)
     int epoll_wait(int eid, set[UDTSOCKET]* readfds, set[UDTSOCKET]* writefds,
                    int64_t msTimeOut, set[SYSSOCKET]* lrfds,
-                   set[SYSSOCKET]* wrfds) nogil
-    int epoll_release(int eid) nogil
-    ERRORINFO& getlasterror() nogil
+                   set[SYSSOCKET]* wrfds)
+    int epoll_release(int eid)
+    ERRORINFO& getlasterror()
     int getlasterror_code()
     const char* getlasterror_desc()
-    int perfmon(UDTSOCKET u, TRACEINFO* perf, bool clear) nogil
-    UDTSTATUS getsockstate(UDTSOCKET u) nogil
+    int perfmon(UDTSOCKET u, TRACEINFO* perf, bool clear)
+    UDTSTATUS getsockstate(UDTSOCKET u)
 
 
 """
