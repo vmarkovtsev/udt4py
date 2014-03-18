@@ -1509,6 +1509,8 @@ class UDTEpoll(object):
             raise UDTException()
         rurs = [self.udt_map.get(s, None) for s in urs]
         ruws = [self.udt_map.get(s, None) for s in uws]
-        rsrs = [].extend(srs)
-        rsws = [].extend(sws)
+        rsrs = []
+        rsrs.extend(srs)
+        rsws = []
+        rsws.extend(sws)
         return (rurs, ruws, rsrs, rsws)
