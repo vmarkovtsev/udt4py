@@ -511,44 +511,22 @@ class UDTSocket(object):
         UDT::TRACEINFO struct.
         """
 
-        def __init__(self, TRACEINFO ti):
+        def __init__(self, *args):
             super(UDTSocket.TraceInfo, self).__init__()
             # global measurements
-            self.msTimeStamp = ti.msTimeStamp
-            self.pktSentTotal = ti.pktSentTotal
-            self.pktRecvTotal = ti.pktRecvTotal
-            self.pktSndLossTotal = ti.pktSndLossTotal
-            self.pktRcvLossTotal = ti.pktRcvLossTotal
-            self.pktRetransTotal = ti.pktRetransTotal
-            self.pktSentACKTotal = ti.pktSentACKTotal
-            self.pktRecvACKTotal = ti.pktRecvACKTotal
-            self.pktSentNAKTotal = ti.pktSentNAKTotal
-            self.pktRecvNAKTotal = ti.pktRecvNAKTotal
-            self.usSndDurationTotal = ti.usSndDurationTotal
-
+            self.msTimeStamp, self.pktSentTotal, self.pktRecvTotal,
+            self.pktSndLossTotal, self.pktRcvLossTotal, self.pktRetransTotal,
+            self.pktSentACKTotal, self.pktRecvACKTotal, self.pktSentNAKTotal,
+            self.pktRecvNAKTotal, self.usSndDurationTotal,
             # local measurements
-            self.pktSent = ti.pktSent
-            self.pktRecv = ti.pktRecv
-            self.pktSndLoss = ti.pktSndLoss
-            self.pktRcvLoss = ti.pktRcvLoss
-            self.pktRetrans = ti.pktRetrans
-            self.pktSentACK = ti.pktSentACK
-            self.pktRecvACK = ti.pktRecvACK
-            self.pktSentNAK = ti.pktSentNAK
-            self.pktRecvNAK = ti.pktRecvNAK
-            self.mbpsSendRate = ti.mbpsSendRate
-            self.mbpsRecvRate = ti.mbpsRecvRate
-            self.usSndDuration = ti.usSndDuration
-
+            self.pktSent, self.pktRecv, self.pktSndLoss, self.pktRcvLoss,
+            self.pktRetrans, self.pktSentACK, self.pktRecvACK, self.pktSentNAK,
+            self.pktRecvNAK, self.mbpsSendRate, self.mbpsRecvRate,
+            self.usSndDuration,
             # instant measurements
-            self.usPktSndPeriod = ti.usPktSndPeriod
-            self.pktFlowWindow = ti.pktFlowWindow
-            self.pktCongestionWindow = ti.pktCongestionWindow
-            self.pktFlightSize = ti.pktFlightSize
-            self.msRTT = ti.msRTT
-            self.mbpsBandwidth = ti.mbpsBandwidth
-            self.byteAvailSndBuf = ti.byteAvailSndBuf
-            self.byteAvailRcvBuf = ti.byteAvailRcvBuf
+            self.usPktSndPeriod, self.pktFlowWindow, self.pktCongestionWindow,
+            self.pktFlightSize, self.msRTT, self.mbpsBandwidth,
+            self.byteAvailSndBuf, self.byteAvailRcvBuf = args
 
     def __init__(self, int family=AF_INET, int type=SOCK_STREAM):
         """
@@ -1007,9 +985,23 @@ class UDTSocket(object):
             the periodical counts since last time the counts are cleared, and
             instant parameter values.
         """
-        cdef TRACEINFO trinf
-        UDTSocket._udt_check(perfmon(self.socket, &trinf, clear))
-        return UDTSocket.TraceInfo(trinf)
+        cdef TRACEINFO ti
+        UDTSocket._udt_check(perfmon(self.socket, &ti, clear))
+        return UDTSocket.TraceInfo(
+            # global measurements
+            ti.msTimeStamp, ti.pktSentTotal, ti.pktRecvTotal,
+            ti.pktSndLossTotal, ti.pktRcvLossTotal, ti.pktRetransTotal,
+            ti.pktSentACKTotal, ti.pktRecvACKTotal, ti.pktSentNAKTotal,
+            ti.pktRecvNAKTotal, ti.usSndDurationTotal,
+            # local measurements
+            ti.pktSent, ti.pktRecv, ti.pktSndLoss, ti.pktRcvLoss,
+            ti.pktRetrans, ti.pktSentACK, ti.pktRecvACK, ti.pktSentNAK,
+            ti.pktRecvNAK, ti.mbpsSendRate, ti.mbpsRecvRate,
+            ti.usSndDuration,
+            # instant measurements
+            ti.usPktSndPeriod, ti.pktFlowWindow, ti.pktCongestionWindow,
+            ti.pktFlightSize, ti.msRTT, ti.mbpsBandwidth,
+            ti.byteAvailSndBuf, ti.byteAvailRcvBuf)
 
     @property
     def peer_address(self):
