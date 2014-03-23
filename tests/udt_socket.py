@@ -41,6 +41,7 @@ UDTSocket tests.
 """
 
 
+import os
 import socket
 import threading
 import time
@@ -136,6 +137,31 @@ class UDTSocketTest(unittest.TestCase):
                 self.assertEqual(UDTException.EASYNCRCV, e.error_code)
         self.assertEqual(UDTSocket.Status.CONNECTED, sock.status)
         sock.sendmsg(b"hello")
+
+    CONTENTS = "contents123456"
+
+    def testFiles(self):
+        FILE_OUT = "/tmp/udtsocket_test_out.txt"
+        sock1 = UDTSocket()
+        sock2 = UDTSocket()
+        sock1.bind("0.0.0.0:7015")
+        sock1.listen()
+        other_thread = threading.Thread(target=self.sendFile, args=(sock2,))
+        other_thread.start()
+        sock, _ = sock1.accept()
+        sock.recvfile(FILE_OUT, 0, len(UDTSocketTest.CONTENTS))
+        with open(FILE_OUT, "r") as fr:
+            self.assertEqual(UDTSocketTest.CONTENTS, fr.read())
+        os.remove(FILE_OUT)
+        other_thread.join()
+
+    def sendFile(self, sock):
+        FILE_IN = "/tmp/udtsocket_test_in.txt"
+        with open(FILE_IN, "w") as fw:
+            fw.write(UDTSocketTest.CONTENTS)
+        sock.connect("127.0.0.1:7015")
+        sock.sendfile(FILE_IN)
+        os.remove(FILE_IN)
 
 
 if __name__ == "__main__":

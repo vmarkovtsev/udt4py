@@ -37,6 +37,8 @@ libudt4 URL:            http://udt.sourceforge.net/
 """
 
 
+import os
+
 from libc.string cimport memset
 from libc.stdint cimport int64_t, uint64_t, int32_t, uint32_t, uint16_t, \
     intptr_t
@@ -965,76 +967,78 @@ class UDTSocket(object):
             result = recvmsg(mysocket, cbuf, length)
         return result
 
+    @_udtapi
     def recvfile(self, str file_name, int offset, int size, int block=7280000):
-      """
-      Reads certain amount of data into a local file.
-      Returns a tuple (the actual size of received data, the new file offset).
+        """
+        Reads certain amount of data into a local file.
+        Returns the actual size of received data.
 
-      Parameters:
-          file_name       The file name where to store incoming data.
+        Parameters:
+            file_name       The file name where to store incoming data.
 
-          offset          The offset position from where the data is written
-                          into the file; after the call returns, this value
-                          records the new offset of the write position.
+            offset          The offset position from where the data is written
+                            into the file.
 
-          size            The total size to be received.
-          block           The size of every data block for file IO.
+            size            The total size to be received.
+            block           The size of every data block for file IO.
 
-      Description:
-          The recvfile method reads certain amount of data and write it into a
-          local file. It is always in blocking mode and neither UDT_RCVSYN nor
-          UDT_RCVTIMEO affects this method. The actual size of data to expect
-          must be known before calling recvfile, otherwise deadlock may occur
-          due to insufficient incoming data.
-      """
+        Description:
+            The recvfile method reads certain amount of data and write it into
+            a local file. It is always in blocking mode and neither UDT_RCVSYN
+            nor UDT_RCVTIMEO affects this method. The actual size of data to
+            expect must be known before calling recvfile, otherwise deadlock
+            may occur due to insufficient incoming data.
+        """
 
-      cdef UDTSOCKET mysocket = self.socket
-      cdef const char *cfile_name = file_name
-      cdef int64_t coffset = offset
-      cdef int64_t csize = size
-      cdef int cblock = block
-      cdef int64_t received = 0
-      with nogil:
-        received = recvfile2(mysocket, cfile_name, &coffset, csize, cblock)
-      self._udt_check(received)
-      return received, coffset
+        cdef UDTSOCKET mysocket = self.socket
+        bfn = file_name.encode()
+        cdef const char *cfile_name = bfn
+        cdef int64_t coffset = offset
+        cdef int64_t csize = size
+        cdef int cblock = block
+        cdef int64_t received = 0
+        with nogil:
+            received = recvfile2(mysocket, cfile_name, &coffset, csize, cblock)
+        return received
 
-    def sendfile(self, str file_name, int offset, int size, int block=364000):
-      """
-      Sends out part or the whole of a local file.
-      Returns a tuple (the actual size of data that has been sent,
-      the new file offset).
+    @_udtapi
+    def sendfile(self, str file_name, int offset=0, int size=-1,
+                 int block=364000):
+        """
+        Sends out part or the whole of a local file.
+        Returns the actual size of data that has been sent.
 
-      Parameters:
-          file_name       The file name where to store incoming data.
+        Parameters:
+            file_name       The file name where to store incoming data.
 
-          offset          The offset position from where the data is read from
-                          the file; after the call returns, this value
-                          records the new offset of the read position.
+            offset          The offset position from where the data is read
+                            from the file.
 
-          size            The total size to be sent.
-          block           The size of every data block for file IO.
+            size            The total size to be sent.
+                            Any negative value sets it to (file size - offset).
+            block           The size of every data block for file IO.
 
-      Description:
-          The sendfile method sends certain amount of out of a local file. It
-          is always in blocking mode and will not return until the exact amount
-          of data is sent, EOF is reached, or the connection is broken. Neither
-          UDT_SNDSYN nor UDT_SNDTIMEO affects this method.
+        Description:
+            The sendfile method sends certain amount of out of a local file. It
+            is always in blocking mode and will not return until the exact
+            amount of data is sent, EOF is reached, or the connection is
+            broken. Neither UDT_SNDSYN nor UDT_SNDTIMEO affects this method.
 
-          Note that sendfile does NOT nessesarily require recvfile at the peer
-          side. Send/recvfile and send/recv are orthogonal UDT methods.
-      """
+            Note that sendfile does NOT nessesarily require recvfile at the
+            peer side. Send/recvfile and send/recv are orthogonal UDT methods.
+        """
 
-      cdef UDTSOCKET mysocket = self.socket
-      cdef const char *cfile_name = file_name
-      cdef int64_t coffset = offset
-      cdef int64_t csize = size
-      cdef int cblock = block
-      cdef int64_t sent = 0
-      with nogil:
-        sent = sendfile2(mysocket, cfile_name, &coffset, csize, cblock)
-      self._udt_check(sent)
-      return sent, coffset
+        cdef UDTSOCKET mysocket = self.socket
+        bfn = file_name.encode()
+        cdef const char *cfile_name = bfn
+        cdef int64_t coffset = offset
+        cdef int64_t csize = size if size >= 0 \
+            else os.path.getsize(file_name) - offset
+        cdef int cblock = block
+        cdef int64_t sent = 0
+        with nogil:
+            sent = sendfile2(mysocket, cfile_name, &coffset, csize, cblock)
+        return sent
 
     def perfmon(self, bool clear=True):
         """

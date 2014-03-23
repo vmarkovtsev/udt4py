@@ -45,7 +45,7 @@ from Cython.Distutils import build_ext
 setup(
     name="udt4py",
     description='libudt4 Python wrapper written with Cython',
-    version="1.1",
+    version="1.2",
     license="Simplified BSD",
     author="Samsung Electronics Co.,Ltd.",
     author_email="v.markovtsev@samsung.com",
