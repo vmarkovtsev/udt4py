@@ -37,10 +37,9 @@ libudt4 URL:            http://udt.sourceforge.net/
 """
 
 
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup
+from setuptools import Extension
 from Cython.Build import cythonize
-from Cython.Distutils import build_ext
 
 setup(
     name="udt4py",
