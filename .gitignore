@@ -20,6 +20,9 @@ lib
 lib64
 __pycache__
 build
+wheelhouse
+venv
+.eggs
 
 # Installer logs
 pip-log.txt
@@ -36,3 +39,4 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+.idea
