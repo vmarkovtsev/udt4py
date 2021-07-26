@@ -39,7 +39,17 @@ libudt4 URL:            http://udt.sourceforge.net/
 
 from setuptools import setup
 from setuptools import Extension
-from Cython.Build import cythonize
+
+
+def extensions():
+    from Cython.Build import cythonize
+    return cythonize([Extension(
+        "udt4py",
+        ["src/udt4py.pyx"],
+        language="c++",
+        libraries=["udt"],
+    )])
+
 
 setup(
     name="udt4py",
@@ -50,12 +60,7 @@ setup(
     author_email="v.markovtsev@samsung.com",
     url="https://github.com/vmarkovtsev/udt4py",
     download_url='https://github.com/vmarkovtsev/udt4py',
-    ext_modules=cythonize([Extension(
-        "udt4py",
-        ["src/udt4py.pyx"],
-        language="c++",
-        libraries=["udt"],
-    )]),
+    ext_modules=extensions(),
     keywords=['udt', 'pyudt', 'udt4', 'udt4py'],
     classifiers=[
         'Development Status :: 4 - Beta',
